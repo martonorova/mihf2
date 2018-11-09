@@ -12,6 +12,7 @@ public class BayesClassifier {
     private HashMap<Integer, Word> vocabulary = new HashMap<>();
     private HashMap<Classification, Integer> classificationFreqOfDocs = new HashMap<>();
     private HashMap<Classification, Integer> classificationFreqOfWords = new HashMap<>();
+    private HashMap<Classification, Integer> emptyDocumentCountByClass = new HashMap<>();
 
     public void readLearningDocuments(Scanner scanner) {
 
@@ -64,9 +65,16 @@ public class BayesClassifier {
     public void analyzeDocuments() {
         documents.forEach(document -> {
 
+            Classification classification = document.getClassification();
+
+            if (document.getWordFreqsInDocument().isEmpty()) {
+                emptyDocumentCountByClass.putIfAbsent(classification, 0);
+                emptyDocumentCountByClass.putIfAbsent(classification, emptyDocumentCountByClass.get(classification) + 1);
+            }
+
             document.getWordFreqsInDocument().forEach((word, freq) -> {
 
-                Classification classification = document.getClassification();
+
 
                 word.incrementFreqInClass(classification);
                 classificationFreqOfWords.putIfAbsent(classification, 0);
@@ -81,11 +89,75 @@ public class BayesClassifier {
                 word.setProbInClass(classification, sumOfWordsInClass, vocabulary.size());
             });
         });
-        System.out.println("END OF ANALYZE");
+        //System.out.println("END OF ANALYZE");
     }
 
     public void test(Scanner scanner) {
-        System.out.println("test");
+        while (scanner.hasNext()) {
+            String line = scanner.nextLine();
+
+            Classification estimatedClass = Classification.NEGATIVE;
+
+            //ures uzenet
+            if (line.length() == 0) {
+
+                int numOfMostEmptyDocInAClass = Integer.MIN_VALUE;
+
+
+                for (Classification classification : emptyDocumentCountByClass.keySet()) {
+                    int actualCount = emptyDocumentCountByClass.get(classification);
+                    if (actualCount > numOfMostEmptyDocInAClass) {
+                        numOfMostEmptyDocInAClass = actualCount;
+                        estimatedClass = classification;
+                    }
+                }
+
+            // van szo az uzenetben
+            } else {
+
+                estimatedClass = estimateClass(line.split(" "));
+            }
+
+
+            System.out.println(estimatedClass.ordinal());
+
+        }
+    }
+
+    private Classification estimateClass(String[] wordCodeStrings) {
+        HashMap<Classification, Double> probsByClass = new HashMap<>();
+
+        for (Classification classification : Classification.values()) {
+            double probOfClass = (double) classificationFreqOfDocs.get(classification) / documents.size();
+            double prob = 1;
+            for (String wordCodeString : wordCodeStrings) {
+                try {
+                    prob *= vocabulary.get(Integer.parseInt(wordCodeString)).getProbInClass(classification);
+                } catch (NullPointerException ex) {
+                    prob *= (double) 1 / (classificationFreqOfWords.get(classification) + vocabulary.size());
+                }
+
+            }
+
+            prob *= probOfClass;
+
+            probsByClass.put(classification, prob);
+
+        }
+
+        Classification estimatedClass = Classification.NEGATIVE;
+        double maxProb = 0;
+
+        for (Classification classification : probsByClass.keySet()) {
+            double actualProb = probsByClass.get(classification);
+
+            if (actualProb > maxProb) {
+                maxProb = actualProb;
+                estimatedClass = classification;
+            }
+        }
+
+        return estimatedClass;
     }
 
 }

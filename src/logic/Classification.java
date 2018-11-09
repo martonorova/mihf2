@@ -1,6 +1,6 @@
 package logic;
 
 public enum Classification {
-    POSITIVE,
-    NEGATIVE
+    NEGATIVE,
+    POSITIVE
 }

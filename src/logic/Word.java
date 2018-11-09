@@ -44,6 +44,10 @@ public class Word {
         probsInClasses.put(classification, probGivenClass);
     }
 
+    public double getProbInClass(Classification classification) {
+        return probsInClasses.get(classification);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

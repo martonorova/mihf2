@@ -3,14 +3,14 @@ package logic;
 import java.util.HashMap;
 
 public class Document {
-    private HashMap<Word, Integer> wordFreqsInDocument = new HashMap<>();
+    private HashMap<Long, Integer> wordFreqsInDocument = new HashMap<>();
     private Classification classification;
 
 
 
-    public void addWord(Word word) {
-        wordFreqsInDocument.putIfAbsent(word, 0);
-        wordFreqsInDocument.put(word, wordFreqsInDocument.get(word) + 1);
+    public void addWord(long wordCode) {
+        wordFreqsInDocument.putIfAbsent(wordCode, 0);
+        wordFreqsInDocument.put(wordCode, wordFreqsInDocument.get(wordCode) + 1);
     }
 
     public Classification getClassification() {
@@ -21,7 +21,7 @@ public class Document {
         this.classification = classification;
     }
 
-    public HashMap<Word, Integer> getWordFreqsInDocument() {
+    public HashMap<Long, Integer> getWordFreqsInDocument() {
         return wordFreqsInDocument;
     }
 

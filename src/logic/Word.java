@@ -4,11 +4,11 @@ import java.util.HashMap;
 import java.util.Objects;
 
 public class Word {
-    private int code;
+    private long code;
     private HashMap<Classification, Integer> freqsInClasses = new HashMap<>();
-    private HashMap<Classification, Double> probsInClasses = new HashMap<>();
+    private HashMap<Classification, Double> probsGivenClasses = new HashMap<>();
 
-    public Word(int code) {
+    public Word(long code) {
 
         this.code = code;
         initFreqMap();
@@ -22,42 +22,45 @@ public class Word {
     }
 
 
-    public int getCode() {
+    public long getCode() {
         return code;
     }
 
-    public void setCode(int code) {
+    public void setCode(long code) {
         this.code = code;
     }
 
-    public void incrementFreqInClass(Classification classification) {
-        freqsInClasses.putIfAbsent(classification, 0);
-        freqsInClasses.put(classification, freqsInClasses.get(classification) + 1);
+    public void incrementFreqInClass(Classification classification, int freq) {
+
+        freqsInClasses.put(classification, freqsInClasses.get(classification) + freq);
+
     }
 
     public int getFreqInClass(Classification classification) {
         return freqsInClasses.get(classification);
     }
 
-    public void setProbInClass(Classification classification, int sumOfWordsInClass, int sizeOfVocabulary) {
-        double probGivenClass = (double) (sumOfWordsInClass + 1) / (freqsInClasses.get(classification) + sizeOfVocabulary);
-        probsInClasses.put(classification, probGivenClass);
+    public void setProbGivenClass(Classification classification, int wordCountInClass, int sizeOfVocabulary) {
+
+        double probGivenClass = (double) (getFreqInClass(classification) + 1) / (double) (wordCountInClass + sizeOfVocabulary);
+
+        probsGivenClasses.put(classification, probGivenClass);
     }
 
-    public double getProbInClass(Classification classification) {
-        return probsInClasses.get(classification);
+    public double getProbGivenClass(Classification classification) {
+        return probsGivenClasses.get(classification);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Word word = (Word) o;
-        return code == word.code;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(code);
-    }
+//    @Override
+//    public boolean equals(Object o) {
+//        if (this == o) return true;
+//        if (o == null || getClass() != o.getClass()) return false;
+//        Word word = (Word) o;
+//        return code == word.code;
+//    }
+//
+//    @Override
+//    public int hashCode() {
+//        return Objects.hash(code);
+//    }
 }

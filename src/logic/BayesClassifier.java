@@ -7,12 +7,13 @@ import java.util.Scanner;
 public class BayesClassifier {
 
     public static final int LEARNING_DOCUMENT_NUM = 80000;
+    public static final int TEST_DOCUMENT_NUM = 20000;
 
     private ArrayList<Document> documents = new ArrayList<>();
-    private HashMap<Integer, Word> vocabulary = new HashMap<>();
-    private HashMap<Classification, Integer> classificationFreqOfDocs = new HashMap<>();
-    private HashMap<Classification, Integer> classificationFreqOfWords = new HashMap<>();
-    private HashMap<Classification, Integer> emptyDocumentCountByClass = new HashMap<>();
+    private HashMap<Long, Word> vocabulary = new HashMap<>();
+    private HashMap<Classification, Integer> docsCountPerClassification = new HashMap<>();
+    private HashMap<Classification, Integer> wordsCountPerClassification = new HashMap<>();
+    private HashMap<Classification, Integer> emptyDocCountPerClassification = new HashMap<>();
 
     public void readLearningDocuments(Scanner scanner) {
 
@@ -28,15 +29,15 @@ public class BayesClassifier {
 
                 if (line.length() > 0) {
 
-                    String[] wordCodes = line.split(" ");
+                    String[] wordCodes = line.split("\t");
 
                     for (String wordCodeString : wordCodes) {
 
-                        //int wordCode = Integer.parseInt(wordCodeString);
-                        Word word = new Word(Integer.parseInt(wordCodeString));
+
+                        Word word = new Word(Long.parseLong(wordCodeString));
 
                         vocabulary.put(word.getCode(), word);
-                        document.addWord(word);
+                        document.addWord(word.getCode());
                     }
                 }
 
@@ -44,12 +45,15 @@ public class BayesClassifier {
 
             } else {
 
-                int classCode = scanner.nextInt();
+                String line = scanner.nextLine();
+
+                //int classCode = scanner.nextInt();
+                long classCode = Long.parseLong(line);
 
                 Classification classification = classCode == 1 ? Classification.POSITIVE : Classification.NEGATIVE;
 
-                classificationFreqOfDocs.putIfAbsent(classification, 0);
-                classificationFreqOfDocs.put(classification, classificationFreqOfDocs.get(classification) + 1);
+                docsCountPerClassification.putIfAbsent(classification, 0);
+                docsCountPerClassification.put(classification, docsCountPerClassification.get(classification) + 1);
 
                 documents.get(lineCount - LEARNING_DOCUMENT_NUM - 1).setClassification(classification);
 
@@ -63,37 +67,41 @@ public class BayesClassifier {
     }
 
     public void analyzeDocuments() {
+
         documents.forEach(document -> {
 
             Classification classification = document.getClassification();
 
+
             if (document.getWordFreqsInDocument().isEmpty()) {
-                emptyDocumentCountByClass.putIfAbsent(classification, 0);
-                emptyDocumentCountByClass.putIfAbsent(classification, emptyDocumentCountByClass.get(classification) + 1);
+
+                emptyDocCountPerClassification.putIfAbsent(classification, 0);
+                emptyDocCountPerClassification.put(classification, emptyDocCountPerClassification.get(classification) + 1);
             }
 
-            document.getWordFreqsInDocument().forEach((word, freq) -> {
+            document.getWordFreqsInDocument().forEach((wordCode, freq) -> {
 
-
-
-                word.incrementFreqInClass(classification);
-                classificationFreqOfWords.putIfAbsent(classification, 0);
-                classificationFreqOfWords.put(classification, classificationFreqOfWords.get(classification) + 1);
+                vocabulary.get(wordCode).incrementFreqInClass(classification, freq);
+                wordsCountPerClassification.putIfAbsent(classification, 0);
+                wordsCountPerClassification.put(classification, wordsCountPerClassification.get(classification) + freq);
 
             });
 
         });
 
         vocabulary.forEach((wordCode, word) -> {
-            classificationFreqOfWords.forEach((classification, sumOfWordsInClass) -> {
-                word.setProbInClass(classification, sumOfWordsInClass, vocabulary.size());
+            wordsCountPerClassification.forEach((classification, wordCountInClass) -> {
+                word.setProbGivenClass(classification, wordCountInClass, vocabulary.size());
             });
         });
         //System.out.println("END OF ANALYZE");
     }
 
     public void test(Scanner scanner) {
-        while (scanner.hasNext()) {
+
+        int testDocCount = 1;
+
+        while (scanner.hasNext() && testDocCount <= TEST_DOCUMENT_NUM) {
             String line = scanner.nextLine();
 
             Classification estimatedClass = Classification.NEGATIVE;
@@ -101,13 +109,13 @@ public class BayesClassifier {
             //ures uzenet
             if (line.length() == 0) {
 
-                int numOfMostEmptyDocInAClass = Integer.MIN_VALUE;
+                int countOfMostEmptyDocInAClass = Integer.MIN_VALUE;
 
 
-                for (Classification classification : emptyDocumentCountByClass.keySet()) {
-                    int actualCount = emptyDocumentCountByClass.get(classification);
-                    if (actualCount > numOfMostEmptyDocInAClass) {
-                        numOfMostEmptyDocInAClass = actualCount;
+                for (Classification classification : emptyDocCountPerClassification.keySet()) {
+                    int actualCount = emptyDocCountPerClassification.get(classification);
+                    if (actualCount > countOfMostEmptyDocInAClass) {
+                        countOfMostEmptyDocInAClass = actualCount;
                         estimatedClass = classification;
                     }
                 }
@@ -115,12 +123,17 @@ public class BayesClassifier {
             // van szo az uzenetben
             } else {
 
-                estimatedClass = estimateClass(line.split(" "));
+                estimatedClass = estimateClass(line.split("\t"));
+            }
+
+            if (testDocCount == TEST_DOCUMENT_NUM) {
+                System.out.print(estimatedClass.ordinal());
+            } else {
+                System.out.println(estimatedClass.ordinal());
             }
 
 
-            System.out.println(estimatedClass.ordinal());
-
+            ++testDocCount;
         }
     }
 
@@ -128,13 +141,17 @@ public class BayesClassifier {
         HashMap<Classification, Double> probsByClass = new HashMap<>();
 
         for (Classification classification : Classification.values()) {
-            double probOfClass = (double) classificationFreqOfDocs.get(classification) / documents.size();
+            double probOfClass = (double) docsCountPerClassification.get(classification) / (double) documents.size();
             double prob = 1;
             for (String wordCodeString : wordCodeStrings) {
+
                 try {
-                    prob *= vocabulary.get(Integer.parseInt(wordCodeString)).getProbInClass(classification);
+
+                    prob *= vocabulary.get(Long.parseLong(wordCodeString)).getProbGivenClass(classification);
+
                 } catch (NullPointerException ex) {
-                    prob *= (double) 1 / (classificationFreqOfWords.get(classification) + vocabulary.size());
+
+                    prob *= (double) 1 / (double) (wordsCountPerClassification.get(classification) + vocabulary.size());
                 }
 
             }
